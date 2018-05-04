@@ -688,32 +688,12 @@ RUNTIME_FUNCTION(Runtime_DisassembleFunction) {
   return isolate->heap()->undefined_value();
 }
 
-namespace {
-
-int StackSize(Isolate* isolate) {
-  int n = 0;
-  for (JavaScriptFrameIterator it(isolate); !it.done(); it.Advance()) n++;
-  return n;
-}
-
-void PrintIndentation(Isolate* isolate) {
-  const int nmax = 80;
-  int n = StackSize(isolate);
-  if (n <= nmax) {
-    PrintF("%4d:%*s", n, n, "");
-  } else {
-    PrintF("%4d:%*s", n, nmax, "...");
-  }
-}
-
-}  // namespace
-
 RUNTIME_FUNCTION(Runtime_TraceEnter) {
   SealHandleScope shs(isolate);
   DCHECK_EQ(0, args.length());
-  PrintIndentation(isolate);
-  JavaScriptFrame::PrintTop(isolate, stdout, true, false);
-  PrintF(" {\n");
+
+  isolate->trace_enter();
+
   return isolate->heap()->undefined_value();
 }
 
@@ -722,10 +702,9 @@ RUNTIME_FUNCTION(Runtime_TraceExit) {
   SealHandleScope shs(isolate);
   DCHECK_EQ(1, args.length());
   CONVERT_ARG_CHECKED(Object, obj, 0);
-  PrintIndentation(isolate);
-  PrintF("} -> ");
-  obj->ShortPrint();
-  PrintF("\n");
+
+  isolate->trace_exit(true);
+
   return obj;  // return TOS
 }
 

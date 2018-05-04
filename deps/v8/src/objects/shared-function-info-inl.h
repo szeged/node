@@ -43,6 +43,7 @@ INT_ACCESSORS(SharedFunctionInfo, function_literal_id, kFunctionLiteralIdOffset)
 #if V8_SFI_HAS_UNIQUE_ID
 INT_ACCESSORS(SharedFunctionInfo, unique_id, kUniqueIdOffset)
 #endif
+INT_ACCESSORS(SharedFunctionInfo, trace_id, kTraceIdOffset)
 INT_ACCESSORS(SharedFunctionInfo, length, kLengthOffset)
 INT_ACCESSORS(SharedFunctionInfo, internal_formal_parameter_count,
               kFormalParameterCountOffset)

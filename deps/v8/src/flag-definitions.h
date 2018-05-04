@@ -844,6 +844,7 @@ DEFINE_BOOL(inline_new, true, "use fast inline allocation")
 
 // codegen-ia32.cc / codegen-arm.cc
 DEFINE_BOOL(trace, false, "trace function calls")
+DEFINE_BOOL(trace_file, true, "write trace file")
 
 // codegen.cc
 DEFINE_BOOL(lazy, true, "use lazy compilation")

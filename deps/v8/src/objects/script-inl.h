@@ -86,6 +86,12 @@ void Script::set_compilation_state(CompilationState state) {
   set_flags(BooleanBit::set(flags(), kCompilationStateBit,
                             state == COMPILATION_STATE_COMPILED));
 }
+bool Script::is_module() {
+  return BooleanBit::get(flags(), kModuleBit);
+}
+void Script::set_is_module(bool value) {
+  set_flags(BooleanBit::set(flags(), kModuleBit, value));
+}
 ScriptOriginOptions Script::origin_options() {
   return ScriptOriginOptions((flags() & kOriginOptionsMask) >>
                              kOriginOptionsShift);

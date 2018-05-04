@@ -2071,6 +2071,14 @@ int UnboundScript::GetLineNumber(int code_pos) {
 }
 
 
+void UnboundScript::SetModule() {
+  i::Handle<i::SharedFunctionInfo> obj =
+      i::Handle<i::SharedFunctionInfo>::cast(Utils::OpenHandle(this));
+  i::Script* script = i::Script::cast(obj->script());
+  script->set_is_module(true);
+}
+
+
 Local<Value> UnboundScript::GetScriptName() {
   i::Handle<i::SharedFunctionInfo> obj =
       i::Handle<i::SharedFunctionInfo>::cast(Utils::OpenHandle(this));
@@ -8241,6 +8249,11 @@ Isolate* Isolate::GetCurrent() {
 Isolate* Isolate::New(const Isolate::CreateParams& params) {
   i::Isolate* isolate = new i::Isolate(false);
   return IsolateNewImpl(isolate, params);
+}
+
+void Isolate::TracePrint()
+{
+  i::Isolate::Current()->trace_print();
 }
 
 // This is separate so that tests can provide a different |isolate|.

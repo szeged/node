@@ -698,6 +698,7 @@ class ContextifyScript : public BaseObject {
       try_catch.ReThrow();
       return;
     }
+    v8_script.ToLocalChecked()->SetModule();
     contextify_script->script_.Reset(isolate, v8_script.ToLocalChecked());
 
     if (compile_options == ScriptCompiler::kConsumeCodeCache) {

@@ -136,6 +136,9 @@ class SharedFunctionInfo : public HeapObject {
   DECL_INT_ACCESSORS(unique_id)
 #endif
 
+  // [trace_id] - a unique id for trace
+  DECL_INT_ACCESSORS(trace_id)
+
   // [function data]: This field holds some additional data for function.
   // Currently it has one of:
   //  - a FunctionTemplateInfo to make benefit the API [IsApiFunction()].
@@ -434,6 +437,7 @@ class SharedFunctionInfo : public HeapObject {
   /* Raw data fields. */                      \
   V(kFunctionLiteralIdOffset, kInt32Size)     \
   V(kUniqueIdOffset, kUniqueIdFieldSize)      \
+  V(kTraceIdOffset, kInt32Size)               \
   V(kLengthOffset, kInt32Size)                \
   V(kFormalParameterCountOffset, kInt32Size)  \
   V(kExpectedNofPropertiesOffset, kInt32Size) \
