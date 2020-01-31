@@ -243,6 +243,7 @@ void AppendExceptionLine(Environment* env,
 }
 
 [[noreturn]] void Abort() {
+  Isolate::TracePrint();
   DumpBacktrace(stderr);
   fflush(stderr);
   ABORT_NO_BACKTRACE();

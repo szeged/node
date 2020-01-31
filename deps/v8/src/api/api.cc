@@ -2112,6 +2112,12 @@ Local<Value> UnboundScript::GetSourceMappingURL() {
   }
 }
 
+void UnboundScript::SetModule() {
+  i::Handle<i::SharedFunctionInfo> obj =
+      i::Handle<i::SharedFunctionInfo>::cast(Utils::OpenHandle(this));
+  i::Script::cast(obj->script()).set_is_module(true);
+}
+
 MaybeLocal<Value> Script::Run(Local<Context> context) {
   auto isolate = reinterpret_cast<i::Isolate*>(context->GetIsolate());
   TRACE_EVENT_CALL_STATS_SCOPED(isolate, "v8", "V8.Execute");
@@ -8710,6 +8716,11 @@ void v8::Isolate::LocaleConfigurationChangeNotification() {
 #ifdef V8_INTL_SUPPORT
   i_isolate->ResetDefaultLocale();
 #endif  // V8_INTL_SUPPORT
+}
+
+void Isolate::TracePrint()
+{
+  i::Isolate::Current()->trace_print();
 }
 
 // static

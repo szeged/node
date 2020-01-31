@@ -1172,9 +1172,6 @@ void BytecodeGenerator::GenerateBytecodeBody() {
     BuildGeneratorObjectVariableInitialization();
   }
 
-  // Emit tracing call if requested to do so.
-  if (FLAG_trace) builder()->CallRuntime(Runtime::kTraceEnter);
-
   // Emit type profile call.
   if (info()->collect_type_profile()) {
     feedback_spec()->AddTypeProfileSlot();
@@ -1209,6 +1206,9 @@ void BytecodeGenerator::GenerateBytecodeBody() {
                                         builder()->Receiver());
     }
   }
+
+  // Emit tracing call.
+  if (FLAG_trace) builder()->CallRuntime(Runtime::kTraceEnter);
 
   // Visit statements in the function body.
   VisitStatements(literal->body());

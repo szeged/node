@@ -129,6 +129,7 @@ ACCESSORS(SharedFunctionInfo, script_or_debug_info, Object,
 
 INT32_ACCESSORS(SharedFunctionInfo, function_literal_id,
                 kFunctionLiteralIdOffset)
+INT32_ACCESSORS(SharedFunctionInfo, trace_id, kTraceIdOffset)
 
 #if V8_SFI_HAS_UNIQUE_ID
 INT_ACCESSORS(SharedFunctionInfo, unique_id, kUniqueIdOffset)

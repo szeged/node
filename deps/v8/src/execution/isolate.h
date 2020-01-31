@@ -11,6 +11,8 @@
 #include <queue>
 #include <unordered_map>
 #include <vector>
+#include <map>
+#include <set>
 
 #include "include/v8-inspector.h"
 #include "include/v8-internal.h"
@@ -1887,6 +1889,23 @@ class Isolate final : private HiddenFactory {
   friend class TestSerializer;
 
   DISALLOW_COPY_AND_ASSIGN(Isolate);
+
+public:
+  // Chains support (must be at the end)
+  struct Chains {
+    std::set<std::vector<int>> chains;
+  };
+
+  std::vector<char*> _trace_nodes;
+  std::map<int, Chains> _trace_chain_map;
+  std::vector<const std::vector<int>*> _trace_chains;
+  std::vector<char*> _include;
+  std::vector<char*> _exclude;
+  bool _trace_last_was_exit;
+
+  void trace_enter();
+  void trace_exit();
+  void trace_print();
 };
 
 #undef FIELD_ACCESSOR

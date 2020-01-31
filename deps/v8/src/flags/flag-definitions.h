@@ -1016,6 +1016,7 @@ DEFINE_NEG_NEG_IMPLICATION(inline_new, turbo_allocation_folding)
 
 // codegen-ia32.cc / codegen-arm.cc
 DEFINE_BOOL(trace, false, "trace function calls")
+DEFINE_BOOL(trace_file, true, "write trace file")
 
 // codegen.cc
 DEFINE_BOOL(lazy, true, "use lazy compilation")

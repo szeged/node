@@ -153,6 +153,7 @@ struct V8Platform v8_platform;
 
 void SignalExit(int signo) {
   ResetStdio();
+  v8::Isolate::TracePrint();
 #ifdef __FreeBSD__
   // FreeBSD has a nasty bug, see RegisterSignalHandler for details
   struct sigaction sa;
@@ -160,6 +161,11 @@ void SignalExit(int signo) {
   sa.sa_handler = SIG_DFL;
   CHECK_EQ(sigaction(signo, &sa, nullptr), 0);
 #endif
+  raise(signo);
+}
+
+void SignalAbort(int signo) {
+  v8::Isolate::TracePrint();
   raise(signo);
 }
 
@@ -537,6 +543,11 @@ inline void PlatformInit() {
 
   RegisterSignalHandler(SIGINT, SignalExit, true);
   RegisterSignalHandler(SIGTERM, SignalExit, true);
+  RegisterSignalHandler(SIGILL, SignalAbort, true);
+  RegisterSignalHandler(SIGABRT, SignalAbort, true);
+  RegisterSignalHandler(SIGBUS, SignalAbort, true);
+  RegisterSignalHandler(SIGSYS, SignalAbort, true);
+  RegisterSignalHandler(SIGSEGV, SignalAbort, true);
 
   // Raise the open file descriptor limit.
   struct rlimit lim;
@@ -924,6 +935,12 @@ InitializationResult InitializeOncePerProcess(int argc, char** argv) {
   if (per_process::cli_options->print_v8_help) {
     V8::SetFlagsFromString("--help", 6);  // Doesn't return.
     UNREACHABLE();
+  }
+
+  char *callchain_disable = getenv("CALLCHAIN_DISABLE");
+  if (callchain_disable == NULL || *callchain_disable == '\0') {
+    const char* flags = "--trace --jitless";
+    V8::SetFlagsFromString(flags, strlen(flags));
   }
 
 #if HAVE_OPENSSL

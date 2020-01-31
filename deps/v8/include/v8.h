@@ -1242,6 +1242,11 @@ class V8_EXPORT UnboundScript {
    */
   int GetLineNumber(int code_pos);
 
+  /**
+   * Set module flag.
+   */
+  void SetModule();
+
   static const int kNoScriptId = 0;
 };
 
@@ -8730,6 +8735,11 @@ class V8_EXPORT Isolate {
    * the performance of locale operations.
    */
   void LocaleConfigurationChangeNotification();
+
+  /**
+   * Prints trace.
+   */
+  static void TracePrint();
 
   Isolate() = delete;
   ~Isolate() = delete;

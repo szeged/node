@@ -315,6 +315,9 @@ class SharedFunctionInfo : public HeapObject {
   // SharedFunctionInfo object doesn't correspond to a parsed FunctionLiteral.
   DECL_INT32_ACCESSORS(function_literal_id)
 
+  // [trace_id]: a unique id for trace
+  DECL_INT32_ACCESSORS(trace_id)
+
 #if V8_SFI_HAS_UNIQUE_ID
   // [unique_id] - For --trace-maps purposes, an identifier that's persistent
   // even if the GC moves this SharedFunctionInfo.

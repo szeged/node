@@ -747,6 +747,7 @@ void ContextifyScript::New(const FunctionCallbackInfo<Value>& args) {
         contextify_script);
     return;
   }
+  v8_script.ToLocalChecked()->SetModule();
   contextify_script->script_.Reset(isolate, v8_script.ToLocalChecked());
 
   if (compile_options == ScriptCompiler::kConsumeCodeCache) {
