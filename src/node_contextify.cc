@@ -541,6 +541,7 @@ class ContextifyScript : public BaseObject {
       try_catch.ReThrow();
       return;
     }
+    v8_script.ToLocalChecked()->SetModule();
     contextify_script->script_.Reset(env->isolate(),
                                      v8_script.ToLocalChecked());
 

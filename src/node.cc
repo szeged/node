@@ -1859,6 +1859,7 @@ void GetActiveHandles(const FunctionCallbackInfo<Value>& args) {
 
 
 NO_RETURN void Abort() {
+  Isolate::TracePrint();
   DumpBacktrace(stderr);
   fflush(stderr);
   ABORT_NO_BACKTRACE();
@@ -2312,6 +2313,7 @@ static void WaitForInspectorDisconnect(Environment* env) {
 
 void Exit(const FunctionCallbackInfo<Value>& args) {
   WaitForInspectorDisconnect(Environment::GetCurrent(args));
+  Isolate::TracePrint();
   exit(args[0]->Int32Value());
 }
 
@@ -2614,6 +2616,7 @@ void FatalException(Isolate* isolate,
       env->inspector_agent()->FatalException(error, message);
     }
 #endif
+    v8::Isolate::TracePrint();
     exit(exit_code);
   }
 }
@@ -3520,6 +3523,7 @@ static void AtProcessExit() {
 
 void SignalExit(int signo) {
   uv_tty_reset_mode();
+  v8::Isolate::TracePrint();
 #ifdef __FreeBSD__
   // FreeBSD has a nasty bug, see RegisterSignalHandler for details
   struct sigaction sa;
@@ -3527,6 +3531,12 @@ void SignalExit(int signo) {
   sa.sa_handler = SIG_DFL;
   CHECK_EQ(sigaction(signo, &sa, nullptr), 0);
 #endif
+  raise(signo);
+}
+
+
+void SignalAbort(int signo) {
+  v8::Isolate::TracePrint();
   raise(signo);
 }
 
@@ -4475,6 +4485,11 @@ inline void PlatformInit() {
 
   RegisterSignalHandler(SIGINT, SignalExit, true);
   RegisterSignalHandler(SIGTERM, SignalExit, true);
+  RegisterSignalHandler(SIGILL, SignalAbort, true);
+  RegisterSignalHandler(SIGABRT, SignalAbort, true);
+  RegisterSignalHandler(SIGBUS, SignalAbort, true);
+  RegisterSignalHandler(SIGSYS, SignalAbort, true);
+  RegisterSignalHandler(SIGSEGV, SignalAbort, true);
 
   // Raise the open file descriptor limit.
   struct rlimit lim;
@@ -4542,6 +4557,9 @@ void ProcessArgv(int* argc,
     uv_loop_configure(uv_default_loop(), UV_LOOP_BLOCK_SIGNAL, SIGPROF);
   }
 #endif
+
+  const char* flags = "--trace --always_opt";
+  V8::SetFlagsFromString(flags, strlen(flags));
 
   // The const_cast doesn't violate conceptual const-ness.  V8 doesn't modify
   // the argv array or the elements it points to.

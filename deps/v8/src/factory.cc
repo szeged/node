@@ -2135,6 +2135,7 @@ Handle<SharedFunctionInfo> Factory::NewSharedFunctionInfo(
       TypeFeedbackMetadata::New(isolate(), &empty_spec);
   Handle<TypeFeedbackVector> feedback_vector =
       TypeFeedbackVector::New(isolate(), feedback_metadata);
+  share->set_trace_id(0);
   share->set_feedback_vector(*feedback_vector, SKIP_WRITE_BARRIER);
 #if TRACE_MAPS
   share->set_unique_id(isolate()->GetNextUniqueSharedFunctionInfoId());

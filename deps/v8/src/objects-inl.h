@@ -5601,6 +5601,12 @@ void Script::set_compilation_state(CompilationState state) {
   set_flags(BooleanBit::set(flags(), kCompilationStateBit,
       state == COMPILATION_STATE_COMPILED));
 }
+bool Script::is_module() {
+  return BooleanBit::get(flags(), kModuleBit);
+}
+void Script::set_is_module(bool value) {
+  set_flags(BooleanBit::set(flags(), kModuleBit, value));
+}
 ScriptOriginOptions Script::origin_options() {
   return ScriptOriginOptions((flags() & kOriginOptionsMask) >>
                              kOriginOptionsShift);
@@ -5629,6 +5635,7 @@ ACCESSORS(SharedFunctionInfo, name, Object, kNameOffset)
 ACCESSORS(SharedFunctionInfo, optimized_code_map, FixedArray,
           kOptimizedCodeMapOffset)
 ACCESSORS(SharedFunctionInfo, construct_stub, Code, kConstructStubOffset)
+SMI_ACCESSORS(SharedFunctionInfo, trace_id, kTraceIdOffset)
 ACCESSORS(SharedFunctionInfo, feedback_vector, TypeFeedbackVector,
           kFeedbackVectorOffset)
 #if TRACE_MAPS

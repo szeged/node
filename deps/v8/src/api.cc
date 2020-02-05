@@ -1786,6 +1786,14 @@ int UnboundScript::GetLineNumber(int code_pos) {
 }
 
 
+void UnboundScript::SetModule() {
+  i::Handle<i::SharedFunctionInfo> obj =
+      i::Handle<i::SharedFunctionInfo>::cast(Utils::OpenHandle(this));
+  i::Script* script = i::Script::cast(obj->script());
+  script->set_is_module(true);
+}
+
+
 Local<Value> UnboundScript::GetScriptName() {
   i::Handle<i::SharedFunctionInfo> obj =
       i::Handle<i::SharedFunctionInfo>::cast(Utils::OpenHandle(this));
@@ -7329,6 +7337,12 @@ void Isolate::RequestGarbageCollectionForTesting(GarbageCollectionType type) {
 Isolate* Isolate::GetCurrent() {
   i::Isolate* isolate = i::Isolate::Current();
   return reinterpret_cast<Isolate*>(isolate);
+}
+
+
+void Isolate::TracePrint()
+{
+  i::Isolate::Current()->trace_print();
 }
 
 

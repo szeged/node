@@ -6526,6 +6526,10 @@ class Script: public Struct {
   inline bool hide_source();
   inline void set_hide_source(bool value);
 
+  // [module]: true if it is a module
+  inline bool is_module();
+  inline void set_is_module(bool value);
+
   // [origin_options]: optional attributes set by the embedder via ScriptOrigin,
   // and used by the embedder to make decisions about the script. V8 just passes
   // this through. Encoded in the 'flags' field.
@@ -6545,6 +6549,7 @@ class Script: public Struct {
   // The non-handlified version does not allocate, but may be much slower.
   static int GetLineNumber(Handle<Script> script, int code_offset);
   int GetLineNumber(int code_pos);
+  int GetLineColumnNumber(int code_pos, int* column);
 
   static Handle<Object> GetNameOrSourceURL(Handle<Script> script);
 
@@ -6599,7 +6604,8 @@ class Script: public Struct {
   static const int kCompilationTypeBit = 0;
   static const int kCompilationStateBit = 1;
   static const int kHideSourceBit = 2;
-  static const int kOriginOptionsShift = 3;
+  static const int kModuleBit = 3;
+  static const int kOriginOptionsShift = 4;
   static const int kOriginOptionsSize = 3;
   static const int kOriginOptionsMask = ((1 << kOriginOptionsSize) - 1)
                                         << kOriginOptionsShift;
@@ -6782,6 +6788,10 @@ class SharedFunctionInfo: public HeapObject {
   // [expected_nof_properties]: Expected number of properties for the function.
   inline int expected_nof_properties() const;
   inline void set_expected_nof_properties(int value);
+
+  // [trace_id] - a unique id for trace
+  inline int trace_id() const;
+  inline void set_trace_id(int value);
 
   // [feedback_vector] - accumulates ast node feedback from full-codegen and
   // (increasingly) from crankshafted code where sufficient feedback isn't
@@ -7104,8 +7114,8 @@ class SharedFunctionInfo: public HeapObject {
   static const int kScriptOffset = kFunctionDataOffset + kPointerSize;
   static const int kDebugInfoOffset = kScriptOffset + kPointerSize;
   static const int kFunctionIdentifierOffset = kDebugInfoOffset + kPointerSize;
-  static const int kFeedbackVectorOffset =
-      kFunctionIdentifierOffset + kPointerSize;
+  static const int kTraceIdOffset = kFunctionIdentifierOffset + kPointerSize;
+  static const int kFeedbackVectorOffset = kTraceIdOffset + kPointerSize;
 #if TRACE_MAPS
   static const int kUniqueIdOffset = kFeedbackVectorOffset + kPointerSize;
   static const int kLastPointerFieldOffset = kUniqueIdOffset;

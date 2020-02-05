@@ -13536,6 +13536,30 @@ int Script::GetLineNumber(int code_pos) {
 }
 
 
+int Script::GetLineColumnNumber(int code_pos, int* column) {
+  DisallowHeapAllocation no_allocation;
+
+  // Slow mode: We iterate through source.
+  *column = -1;
+  if (!source()->IsString()) return -1;
+
+  String* source_string = String::cast(source());
+  int line = 1;
+  int col = 1;
+  int len = source_string->length();
+  for (int pos = 0; pos < len; pos++) {
+    if (pos == code_pos) break;
+    col++;
+    if (source_string->Get(pos) == '\n') {
+      col = 1;
+      line++;
+    }
+  }
+  *column = col;
+  return line;
+}
+
+
 Handle<Object> Script::GetNameOrSourceURL(Handle<Script> script) {
   Isolate* isolate = script->GetIsolate();
   Handle<String> name_or_source_url_key =
