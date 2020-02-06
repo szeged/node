@@ -2538,6 +2538,7 @@ Handle<SharedFunctionInfo> Factory::NewSharedFunctionInfo(
       FeedbackMetadata::New(isolate(), &empty_spec);
   share->set_feedback_metadata(*feedback_metadata, SKIP_WRITE_BARRIER);
   share->set_function_literal_id(FunctionLiteral::kIdTypeInvalid);
+  share->set_trace_id(0);
 #if V8_SFI_HAS_UNIQUE_ID
   share->set_unique_id(isolate()->GetNextUniqueSharedFunctionInfoId());
 #endif

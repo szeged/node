@@ -933,9 +933,6 @@ void BytecodeGenerator::GenerateBytecodeBody() {
     BuildGeneratorObjectVariableInitialization();
   }
 
-  // Emit tracing call if requested to do so.
-  if (FLAG_trace) builder()->CallRuntime(Runtime::kTraceEnter);
-
   // Emit type profile call.
   if (info()->literal()->feedback_vector_spec()->HasTypeProfileSlot()) {
     int num_parameters = closure_scope()->num_parameters();
@@ -954,6 +951,9 @@ void BytecodeGenerator::GenerateBytecodeBody() {
 
   // Perform a stack-check before the body.
   builder()->StackCheck(info()->literal()->start_position());
+
+  // Emit tracing call if requested to do so.
+  if (FLAG_trace) builder()->CallRuntime(Runtime::kTraceEnter);
 
   // Visit statements in the function body.
   VisitStatements(info()->literal()->body());

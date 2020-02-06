@@ -44,6 +44,7 @@ BIT_FIELD_ACCESSORS(SharedFunctionInfo, start_position_and_type, is_toplevel,
                     SharedFunctionInfo::IsTopLevelBit)
 
 INT_ACCESSORS(SharedFunctionInfo, function_literal_id, kFunctionLiteralIdOffset)
+INT_ACCESSORS(SharedFunctionInfo, trace_id, kTraceIdOffset)
 #if V8_SFI_HAS_UNIQUE_ID
 INT_ACCESSORS(SharedFunctionInfo, unique_id, kUniqueIdOffset)
 #endif

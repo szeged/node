@@ -1122,6 +1122,11 @@ class V8_EXPORT UnboundScript {
    */
   int GetLineNumber(int code_pos);
 
+  /**
+   * Set module flag.
+   */
+  void SetModule();
+
   static const int kNoScriptId = 0;
 };
 
@@ -7036,6 +7041,11 @@ class V8_EXPORT Isolate {
    * This method must not be invoked before V8::Initialize() was invoked.
    */
   static Isolate* GetCurrent();
+
+  /**
+   * Prints trace.
+   */
+  static void TracePrint();
 
   /**
    * Custom callback used by embedders to help V8 determine if it should abort

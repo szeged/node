@@ -102,6 +102,9 @@ class Script : public Struct {
   inline CompilationState compilation_state();
   inline void set_compilation_state(CompilationState state);
 
+  // [module]: true if it is a module
+  DECL_BOOLEAN_ACCESSORS(is_module);
+
   // [origin_options]: optional attributes set by the embedder via ScriptOrigin,
   // and used by the embedder to make decisions about the script. V8 just passes
   // this through. Encoded in the 'flags' field.
@@ -209,7 +212,8 @@ class Script : public Struct {
   // Bit positions in the flags field.
   static const int kCompilationTypeBit = 0;
   static const int kCompilationStateBit = 1;
-  static const int kOriginOptionsShift = 2;
+  static const int kModuleBit = 2;
+  static const int kOriginOptionsShift = 3;
   static const int kOriginOptionsSize = 4;
   static const int kOriginOptionsMask = ((1 << kOriginOptionsSize) - 1)
                                         << kOriginOptionsShift;

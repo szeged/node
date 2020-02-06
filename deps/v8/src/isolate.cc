@@ -5,6 +5,7 @@
 #include "src/isolate.h"
 
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <fstream>  // NOLINT(readability/streams)
 #include <sstream>
@@ -1353,6 +1354,15 @@ Object* Isolate::UnwindAndFindHandler() {
         break;
     }
 
+    if (!_trace_last_was_exit && frame->is_java_script()) {
+      JSFunction* function = static_cast<JavaScriptFrame*>(frame)->function();
+      SharedFunctionInfo* shared = function->shared();
+
+      if (shared->trace_id() > 0) {
+        trace_exit();
+      }
+    }
+
     if (frame->is_optimized()) {
       // Remove per-frame stored materialized objects.
       bool removed = materialized_object_store_->Remove(frame->fp());
@@ -2283,6 +2293,52 @@ class VerboseAccountingAllocator : public AccountingAllocator {
   size_t allocation_sample_bytes_, pool_sample_bytes_;
 };
 
+static void pattern_add(char *input, std::vector<char*>* patterns)
+{
+  char *start;
+  char *pattern;
+
+  if (input == NULL) {
+    return;
+  }
+
+  start = input;
+  while (true) {
+    if (*input != '|' && *input != '\0') {
+      input++;
+      continue;
+    }
+
+    if (start < input) {
+      size_t size = input - start;
+      pattern = (char*)Malloced::New(size + 1);
+      memcpy(pattern, start, size);
+      pattern[size] = '\0';
+
+      patterns->push_back(pattern);
+    }
+
+    if (*input == '\0') {
+      return;
+    }
+
+    input++;
+    start = input;
+  }
+}
+
+static bool pattern_match(char *input, std::vector<char*>* patterns)
+{
+  size_t length = patterns->size();
+
+  for (size_t i = 0; i < length; i++) {
+    if (strstr(input, (*patterns)[i]) != NULL) {
+      return true;
+    }
+  }
+  return false;
+}
+
 Isolate::Isolate(bool enable_serializer)
     : embedder_data_(),
       entry_stack_(NULL),
@@ -2380,6 +2436,12 @@ Isolate::Isolate(bool enable_serializer)
   debug_ = new Debug(this);
 
   init_memcopy_functions(this);
+
+  _trace_last_was_exit = true;
+  _trace_nodes.push_back((char*)"\"label\": \"<entry>\", \"pos\": \"<entry>\", \"entry\": true");
+
+  pattern_add(getenv("CALLCHAIN_INCLUDE"), &_include);
+  pattern_add(getenv("CALLCHAIN_EXCLUDE"), &_exclude);
 }
 
 
@@ -2422,6 +2484,7 @@ void Isolate::Deinit() {
   TRACE_ISOLATE(deinit);
 
   debug()->Unload();
+  trace_print();
 
   if (concurrent_recompilation_enabled()) {
     optimizing_compile_dispatcher_->Stop();
@@ -3702,6 +3765,350 @@ CpuProfiler* Isolate::EnsureCpuProfiler() {
     cpu_profiler_ = new CpuProfiler(this);
   }
   return cpu_profiler_;
+}
+
+static size_t GetIntegerLength(int num)
+{
+  int counter = 0;
+
+  if (num < 0) {
+    if (num == INT_MIN) {
+      return 11;
+    }
+    num = -num;
+    counter = 1;
+  }
+
+  do {
+    counter++;
+    num /= 10;
+  } while (num > 0);
+
+  return counter;
+}
+
+static char JSONToSingleChar(char chr)
+{
+  if (chr == 0x8 /* \b */)
+  {
+    return 'b';
+  }
+
+  if (chr == 0x09 /* \t */)
+  {
+    return 't';
+  }
+
+  if (chr == 0x0a /* \n */)
+  {
+    return 'n';
+  }
+
+  if (chr == 0x0c /* \f */)
+  {
+    return 'f';
+  }
+
+  if (chr == 0x0d /* \r */)
+  {
+    return 'r';
+  }
+
+  return '\0';
+}
+
+static size_t GetJSONStringLength(char* src)
+{
+  size_t length = 0;
+
+  while (*src)
+  {
+    if (*src < 0x20)
+    {
+      length++;
+
+      if (JSONToSingleChar(*src) == '\0')
+      {
+        length += 4;
+      }
+    }
+    else if (*src == '"' || *src == '\\')
+    {
+      length++;
+    }
+
+    length++;
+    src++;
+  }
+
+  return length;
+}
+
+static char* CopyJSONString(char* str, char *src)
+{
+  while (*src)
+  {
+    if (*src < 0x20)
+    {
+      *str++ = '\\';
+
+      char single_char = JSONToSingleChar(*src);
+
+      if (single_char != '\0')
+      {
+        *str++ = single_char;
+        src++;
+        continue;
+      }
+
+      str[0] = 'u';
+      str[1] = '0';
+      str[2] = '0';
+      str[3] = *src >= 0x10 ? '1' : '0';
+
+      single_char = *src & 0xf;
+      str[4] = (single_char < 10) ? (single_char + '0') : (single_char - 10 + 'A');
+
+      str += 5;
+      src++;
+      continue;
+    }
+    else if (*src == '"' || *src == '\\')
+    {
+      *str++ = '\\';
+    }
+    *str++ = *src++;
+  }
+
+  return str;
+}
+
+static char* CopyRawString(char* str, const char *src)
+{
+  while (*src)
+  {
+    *str++ = *src++;
+  }
+
+  return str;
+}
+
+static inline int CreateTraceId(Isolate* isolate, JavaScriptFrame* frame,
+    JSFunction* function, SharedFunctionInfo* shared)
+{
+  Object* maybe_script = shared->script();
+  if (!maybe_script->IsScript()) {
+    shared->set_trace_id(-1);
+    return -1;
+  }
+
+  Script* script = Script::cast(maybe_script);
+  Script::PositionInfo info;
+  script->GetPositionInfo(shared->start_position(), &info, Script::WITH_OFFSET);
+
+  int line = info.line + 1;
+  int col = info.column + 1;
+  char *final_str;
+
+  if (line == 1 && script->is_module()) {
+    // Module.
+    if (col == 1) {
+      col = 0;
+    } else if (col < 62) {
+      col = 1;
+    } else {
+      col -= 62;
+    }
+  }
+
+  size_t info_size = 10 + 11 + 1 + GetIntegerLength(line) + 1 + GetIntegerLength(col) + 1 + 1;
+
+  std::unique_ptr<char[]> c_name =
+      shared->DebugName()->ToCString(DISALLOW_NULLS, ROBUST_STRING_TRAVERSAL);
+
+  info_size += GetJSONStringLength(c_name.get());
+
+  Object* script_name_raw = script->name();
+  if (script_name_raw->IsString()) {
+    String* script_name = String::cast(script_name_raw);
+
+    std::unique_ptr<char[]> c_script_name =
+        script_name->ToCString(DISALLOW_NULLS, ROBUST_STRING_TRAVERSAL);
+
+    info_size += GetJSONStringLength(c_script_name.get());
+
+    final_str = (char*)Malloced::New(info_size);
+
+    char* str_ptr = final_str;
+    str_ptr = CopyRawString(str_ptr, "\"label\": \"");
+    str_ptr = CopyJSONString(str_ptr, c_name.get());
+    str_ptr = CopyRawString(str_ptr, "\", \"pos\": \"");
+    str_ptr = CopyJSONString(str_ptr, c_script_name.get());
+
+    sprintf(str_ptr, ":%d:%d\"", line, col);
+  } else {
+    int id = script->id();
+
+    info_size += 9 + GetIntegerLength(id);
+    final_str = (char*)Malloced::New(info_size);
+
+    char* str_ptr = final_str;
+    str_ptr = CopyRawString(str_ptr, "\"label\": \"");
+    str_ptr = CopyJSONString(str_ptr, c_name.get());
+
+    sprintf(str_ptr, "\", \"pos\": \"<unknown%d>:%d:%d\"", id, line, col);
+  }
+
+  if ((isolate->_include.size() > 0 && !pattern_match(final_str, &isolate->_include))
+      || (isolate->_exclude.size() > 0 && pattern_match(final_str, &isolate->_exclude))) {
+    Malloced::Delete(final_str);
+    shared->set_trace_id(-1);
+    return -1;
+  }
+
+  int trace_id = isolate->_trace_nodes.size();
+  isolate->_trace_nodes.push_back(final_str);
+  shared->set_trace_id(trace_id);
+  return trace_id;
+}
+
+void Isolate::trace_enter()
+{
+  if (!_trace_last_was_exit) {
+    return;
+  }
+
+  JavaScriptFrameIterator it(this);
+  while (!it.done()) {
+    if (it.frame()->is_java_script()) {
+      JavaScriptFrame* frame = it.frame();
+      JSFunction* function = frame->function();
+      SharedFunctionInfo* shared = function->shared();
+
+      int trace_id = shared->trace_id();
+
+      if (trace_id == 0) {
+        trace_id = CreateTraceId(this, frame, function, shared);
+      }
+
+      if (trace_id != -1) {
+        _trace_last_was_exit = false;
+      }
+      return;
+    }
+    it.Advance();
+  }
+}
+
+void Isolate::trace_exit()
+{
+  if (_trace_last_was_exit) {
+    return;
+  }
+
+  int trace_length = 0;
+
+  JavaScriptFrameIterator it1(this);
+  while (!it1.done()) {
+    if (it1.frame()->is_java_script()) {
+      JavaScriptFrame* frame = it1.frame();
+      JSFunction* function = frame->function();
+      SharedFunctionInfo* shared = function->shared();
+
+      int trace_id = shared->trace_id();
+
+      if (trace_id == 0) {
+        trace_id = CreateTraceId(this, frame, function, shared);
+      }
+
+      if (trace_id != -1) {
+        trace_length++;
+      } else if (trace_length == 0) {
+        return;
+      }
+    }
+    it1.Advance();
+  }
+
+  _trace_last_was_exit = true;
+
+  std::vector<int> v;
+  v.reserve(trace_length);
+
+  int hash = 0;
+
+  JavaScriptFrameIterator it2(this);
+  while (!it2.done()) {
+    if (it2.frame()->is_java_script()) {
+      JavaScriptFrame* frame = it2.frame();
+      JSFunction* function = frame->function();
+      SharedFunctionInfo* shared = function->shared();
+
+      int trace_id = shared->trace_id();
+
+      if (trace_id != -1) {
+        hash ^= trace_id;
+        v.push_back(trace_id);
+      }
+    }
+    it2.Advance();
+  }
+
+  Chains& chains = _trace_chain_map[hash];
+
+  std::pair<std::set<std::vector<int>>::iterator, bool> result = chains.chains.insert(v);
+
+  if (result.second) {
+    _trace_chains.push_back(&(*result.first));
+  }
+}
+
+void Isolate::trace_print()
+{
+  char file_name[32];
+  sprintf(file_name, "trace-%d.jlog", (int)getpid());
+
+  FILE *file = fopen(file_name, "w");
+
+  // Stage 1: print nodes
+  {
+    PrintF(file, "{\n\"directed\": true,\n\"multigraph\": false,\n\"nodes\": [\n");
+
+    std::map<int, char*>::iterator it, end;
+    int n = _trace_nodes.size();
+    for (int i = 0; i < n; i++) {
+      if (i != 0) {
+        PrintF(file, ",\n");
+      }
+
+      PrintF(file, "  { \"id\":%d, %s }", i, _trace_nodes[i]);
+    }
+  }
+
+  // Stage 2: print backtraces
+  {
+    PrintF(file, "\n],\n\"call_chains\": [\n");
+
+    int size = _trace_chains.size();
+    for (int i = 0; i < size; i++) {
+      if (i != 0) {
+        PrintF(file, ",\n");
+      }
+
+      PrintF(file, "  [0, ");
+
+      const std::vector<int>& trace = *(_trace_chains[i]);
+
+      int s = trace.size();
+      for (int i = s - 1; i > 0; i--) {
+        PrintF(file, "%d, ", trace[i]);
+      }
+      PrintF(file, "%d]", trace[0]);
+    }
+    PrintF(file, "\n]\n}\n");
+  }
+
+  fclose(file);
 }
 
 bool StackLimitCheck::JsHasOverflowed(uintptr_t gap) const {
